@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -16,39 +17,7 @@ func init() {
 }
 
 var (
-	states   = []string{"start", "stop"}
-	colorMap = map[string]payload{
-		"start": {
-			Embeds: []embed{
-				{
-					Title:       "Minecraft Server - Starting",
-					Description: "The minecraft server is starting up, please wait 5 minutes before trying to login.",
-					Color:       4437377,
-					Footer: struct {
-						Text string "json:\"text,omitempty\""
-					}{
-						"Systemd Service",
-					},
-					Timestamp: time.Now(),
-				},
-			},
-		},
-		"stop": {
-			Embeds: []embed{
-				{
-					Title:       "Minecraft Server - Stopping",
-					Description: "The minecraft server is shutting down, either by hand or by Amazon.",
-					Color:       15730953,
-					Footer: struct {
-						Text string "json:\"text,omitempty\""
-					}{
-						"Systemd Service",
-					},
-					Timestamp: time.Now(),
-				},
-			},
-		},
-	}
+	states = []string{"start", "stop"}
 )
 
 func validateState(s string) bool {
@@ -76,7 +45,7 @@ func main() {
 		log.WithField("state", state).Fatalf("invalid state must be one of: %v", states)
 	}
 
-	pb, err := json.Marshal(colorMap[state])
+	pb, err := json.Marshal(generatePayload(state))
 	if err != nil {
 		log.WithField("err", err).Fatal("encountered err encoding payload")
 	}
@@ -105,4 +74,33 @@ type embed struct {
 		Text string `json:"text,omitempty"`
 	} `json:"footer,omitempty"`
 	Timestamp time.Time `json:"timestamp,omitempty"`
+}
+
+func generatePayload(state string) payload {
+	p := payload{
+		Embeds: []embed{
+			{
+				Title:       "Minecraft Server - %s",
+				Description: "",
+				Color:       0,
+				Footer: struct {
+					Text string "json:\"text,omitempty\""
+				}{
+					"Systemd Service",
+				},
+				Timestamp: time.Now(),
+			},
+		},
+	}
+	switch state {
+	case "start":
+		p.Embeds[0].Title = fmt.Sprintf(p.Embeds[0].Title, "Starting")
+		p.Embeds[0].Color = 4437377
+		p.Embeds[0].Description = "The minecraft server is starting up, please wait 5 minutes before trying to login."
+	case "stop":
+		p.Embeds[0].Title = fmt.Sprintf(p.Embeds[0].Title, "Stopping")
+		p.Embeds[0].Color = 15730953
+		p.Embeds[0].Description = "The minecraft server is shutting down, either by hand or by Amazon."
+	}
+	return p
 }
